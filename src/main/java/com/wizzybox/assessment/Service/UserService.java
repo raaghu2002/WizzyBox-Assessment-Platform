@@ -2,6 +2,7 @@ package com.wizzybox.assessment.Service;
 
 import com.wizzybox.assessment.Model.User;
 import com.wizzybox.assessment.Repository.UserRepository;
+import com.wizzybox.assessment.Util.JwtUtil;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,18 +18,20 @@ import java.util.Random;
 
 @Service
 public class UserService {
+
     private final UserRepository userRepository;
     private final JavaMailSender mailSender;
     private final PasswordEncoder passwordEncoder;
+    private final JwtUtil jwtUtil;
 
     @Autowired
-    public UserService(UserRepository userRepository, JavaMailSender mailSender, PasswordEncoder passwordEncoder) {
+    public UserService(UserRepository userRepository, JavaMailSender mailSender, PasswordEncoder passwordEncoder, JwtUtil jwtUtil) {
         this.userRepository = userRepository;
         this.mailSender = mailSender;
         this.passwordEncoder = passwordEncoder;
+        this.jwtUtil = jwtUtil;
     }
 
-    // User registration with OTP
     public ResponseEntity<String> registerUser(String name, String email) {
         if(userRepository.existsById(email)) {
             return ResponseEntity.badRequest().body("Email already registered");
@@ -38,12 +41,16 @@ public class UserService {
         user.setEmail(email);
         user.setName(name);
 
-        // Generate and store OTP
         String otp = generateOTP();
         user.setVerificationToken(otp);
         user.setOtpExpiry(LocalDateTime.now().plusMinutes(5));
 
-        sendOtpEmail(email, otp);
+        try {
+            sendOtpEmail(email, otp);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body("Failed to send OTP email");
+        }
+
         userRepository.save(user);
         return ResponseEntity.ok("OTP sent to registered email");
     }
@@ -56,7 +63,6 @@ public class UserService {
             return ResponseEntity.badRequest().body("Invalid or expired OTP");
         }
 
-        // Validate new password
         if (!isValidPassword(password)) {
             return ResponseEntity.badRequest().body("Password must be 8-12 characters long and include at least one uppercase letter, one lowercase letter, one number, and one special character.");
         }
@@ -65,8 +71,12 @@ public class UserService {
         user.setVerified(true);
         user.setOtpExpiry(null);
         user.setVerificationToken(null);
+
         userRepository.save(user);
-        return ResponseEntity.ok("Registration successful");
+
+        // Generate JWT token
+        String token = jwtUtil.generateToken(email);
+        return ResponseEntity.ok("Registration successful. Token: " + token);
     }
 
     public ResponseEntity<String> verifyResetOtpAndSetPassword(String email, String otp, String newPassword) {
@@ -77,7 +87,6 @@ public class UserService {
             return ResponseEntity.badRequest().body("Invalid or expired OTP");
         }
 
-        // Validate new password
         if (!isValidPassword(newPassword)) {
             return ResponseEntity.badRequest().body("Password must be 8-12 characters long and include at least one uppercase letter, one lowercase letter, one number, and one special character.");
         }
@@ -89,19 +98,15 @@ public class UserService {
         return ResponseEntity.ok("Password reset successful");
     }
 
-    // Password validation method
     private boolean isValidPassword(String password) {
         String passwordRegex = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,12}$";
         return password.matches(passwordRegex);
     }
 
-
-    // Generate 6-digit OTP
     private String generateOTP() {
         return String.valueOf(new Random().nextInt(900000) + 100000);
     }
 
-    // Email sending logic
     private void sendOtpEmail(String to, String otp) {
         try {
             MimeMessage message = mailSender.createMimeMessage();
@@ -130,18 +135,18 @@ public class UserService {
         user.setVerificationToken(otp);
         user.setOtpExpiry(LocalDateTime.now().plusMinutes(5));
 
-        sendOtpEmail(email, otp); // Send OTP via email
+        try {
+            sendOtpEmail(email, otp); // Send OTP via email
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body("Failed to send OTP email");
+        }
+
         userRepository.save(user);
 
         return ResponseEntity.ok("OTP sent to registered email for password reset");
     }
 
-
-
-
     public User findByEmail(String email) {
         return userRepository.findByEmail(email).orElse(null);
     }
-
 }
-
