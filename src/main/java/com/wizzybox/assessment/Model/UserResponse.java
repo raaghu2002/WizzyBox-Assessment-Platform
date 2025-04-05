@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
+import java.util.Date;
 
 @Entity
 @Table(name = "user_responses")
@@ -23,15 +24,21 @@ public class UserResponse {
     @Column(nullable = false)
     private String userId;
 
-    @Column(nullable = false)
-    private String username;
-
     @Column(name = "user_response")
     private String userResponse;
 
-    @Column(name = "correct_option")
-    private Character correctOption;
+    @Column(name = "subject")
+    private String subject;
 
-    @Column(name = "question_text", columnDefinition = "TEXT")
-    private String questionText;
+    @Column(name = "submission_time")
+    @Temporal(TemporalType.TIMESTAMP)
+    private Date submissionTime;
+
+    // This is not needed as we can get it from the Question entity
+    // @Column(name = "correct_option")
+    // private Character correctOption;
+
+    // This is not needed as we can get it from the Question entity
+    // @Column(name = "question_text", columnDefinition = "TEXT")
+    // private String questionText;
 }
