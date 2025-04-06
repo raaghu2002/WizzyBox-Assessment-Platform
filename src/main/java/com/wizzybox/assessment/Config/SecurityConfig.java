@@ -15,6 +15,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
+import static org.springframework.http.CacheControl.maxAge;
 import static org.springframework.security.config.Customizer.withDefaults;
 
 @Configuration
@@ -28,7 +29,7 @@ public class SecurityConfig {
         http
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/register", "/api/auth/verify-otp", "/api/auth/login", "/api/auth/forgot-password", "/api/auth/reset-password" , "/api/auth/validate-token", "/api/questions/get", "/api/subjects", "/user-responses/submit", "/user-responses/review/*", "/user-responses/questions" ).permitAll()
+                        .requestMatchers("/api/auth/register", "/api/auth/verify-otp", "/api/auth/login", "/api/auth/forgot-password", "/api/auth/reset-password" , "/api/auth/validate-token", "/api/questions/get", "/api/subjects", "/user-responses/submit", "/user-responses/review/*", "/user-responses/questions", "/user-responses/has-attended/*" ).permitAll()
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(exception -> exception
@@ -68,7 +69,8 @@ public class SecurityConfig {
                         .allowedOrigins(frontendUrl)
                         .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                         .allowedHeaders("*")
-                        .allowCredentials(true);
+                        .allowCredentials(true)
+                .maxAge(3600);
             }
         };
     }

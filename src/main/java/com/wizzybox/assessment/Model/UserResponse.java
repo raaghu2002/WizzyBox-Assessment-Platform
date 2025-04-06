@@ -1,6 +1,7 @@
 package com.wizzybox.assessment.Model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
@@ -26,6 +27,7 @@ public class UserResponse {
 
     @Column(name = "user_response")
     private String userResponse;
+
 
     @Column(name = "subject")
     private String subject;

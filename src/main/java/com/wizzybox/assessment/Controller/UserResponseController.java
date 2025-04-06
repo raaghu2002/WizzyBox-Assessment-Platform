@@ -15,7 +15,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/user-responses")
-@CrossOrigin(origins = "http://localhost:3000")
+@CrossOrigin(origins = "http://localhost:3000" , allowedHeaders = "*")
 public class UserResponseController {
     private static final Logger logger = LoggerFactory.getLogger(UserResponseController.class);
 
@@ -128,4 +128,16 @@ public class UserResponseController {
 
         return score;
     }
+
+    @GetMapping("/has-attended/{userId}/{subject}")
+    public ResponseEntity<Boolean> hasUserAttendedAssessment(@PathVariable String userId, @PathVariable String subject) {
+        try {
+            int count = userResponseRepository.countResponsesByUserIdAndSubject(userId, subject);
+            return ResponseEntity.ok(count > 0);
+        } catch (Exception e) {
+            logger.error("Error checking if user has attended assessment", e);
+            return ResponseEntity.status(500).body(false);
+        }
+    }
+
 }

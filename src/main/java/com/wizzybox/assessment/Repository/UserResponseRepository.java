@@ -26,4 +26,8 @@ public interface UserResponseRepository extends JpaRepository<UserResponse, Long
     @Query("SELECT ur FROM UserResponse ur WHERE ur.userId = :userId AND ur.submissionTime = " +
             "(SELECT MAX(ur2.submissionTime) FROM UserResponse ur2 WHERE ur2.userId = :userId)")
     List<UserResponse> findMostRecentResponsesByUserId(@Param("userId") String userId);
+
+    @Query("SELECT COUNT(ur) FROM UserResponse ur WHERE ur.userId = :userId AND ur.subject = :subject")
+    int countResponsesByUserIdAndSubject(@Param("userId") String userId, @Param("subject") String subject);
+
 }
