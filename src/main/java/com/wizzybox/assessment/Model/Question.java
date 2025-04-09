@@ -34,4 +34,7 @@ public class Question {
 
     @Column(nullable = false)
     private Character correctOption;
+
+    @Column(nullable = false)
+    private String explanation;
 }

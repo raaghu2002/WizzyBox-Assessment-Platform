@@ -37,7 +37,8 @@ public class QuestionController {
                                 data[3], // optionB
                                 data[4], // optionC
                                 data[5], // optionD
-                                data[6].charAt(0) // correctOption
+                                data[6].charAt(0), // correctOption
+                                data[7]  // explanation
                         );
                     })
                     .collect(Collectors.toList());

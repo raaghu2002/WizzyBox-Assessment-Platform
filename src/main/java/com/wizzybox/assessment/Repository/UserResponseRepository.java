@@ -30,4 +30,11 @@ public interface UserResponseRepository extends JpaRepository<UserResponse, Long
     @Query("SELECT COUNT(ur) FROM UserResponse ur WHERE ur.userId = :userId AND ur.subject = :subject")
     int countResponsesByUserIdAndSubject(@Param("userId") String userId, @Param("subject") String subject);
 
+
+    @Query("SELECT COUNT(u) > 0 FROM UserResponse u WHERE u.userId = :userId AND u.subject = :subject")
+    boolean existsByUserIdAndSubject(@Param("userId") String userId, @Param("subject") String subject);
+
+
+
+
 }

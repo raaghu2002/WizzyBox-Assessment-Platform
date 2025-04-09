@@ -5,6 +5,7 @@ import com.wizzybox.assessment.Model.UserResponse;
 import com.wizzybox.assessment.Repository.QuestionRepository;
 import com.wizzybox.assessment.Repository.UserResponseRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.slf4j.Logger;
@@ -15,7 +16,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/user-responses")
-@CrossOrigin(origins = "http://localhost:3000" , allowedHeaders = "*")
+@CrossOrigin(origins = "http://localhost:3000")
 public class UserResponseController {
     private static final Logger logger = LoggerFactory.getLogger(UserResponseController.class);
 
@@ -26,43 +27,55 @@ public class UserResponseController {
     private QuestionRepository questionRepository;
 
     @PostMapping("/submit")
-    public ResponseEntity<Integer> submitResponses(@RequestBody List<UserResponse> responses) {
+    public ResponseEntity<?> submitResponses(@RequestBody List<UserResponse> responses) {
         try {
-            // Set submission time for all responses
+            if (responses == null || responses.isEmpty()) {
+                return ResponseEntity.badRequest().body("No responses provided");
+            }
+
+            UserResponse firstResponse = responses.get(0);
+            String userId = firstResponse.getUserId();
+            Integer questionId = firstResponse.getQuestion().getQuestionId();
+
+            // Load question to get subject
+            Question firstQuestion = questionRepository.findById(questionId)
+                    .orElseThrow(() -> new RuntimeException("Question not found with ID: " + questionId));
+            String subject = firstQuestion.getSubject();
+
+            // Check if user already submitted for this subject
+            boolean exists = userResponseRepository.existsByUserIdAndSubject(userId, subject);
+            if (exists) {
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body("User has already submitted responses for subject: " + subject);
+            }
+
             Date submissionTime = new Date();
+
             for (UserResponse response : responses) {
                 response.setSubmissionTime(submissionTime);
 
-                // Explicitly load the full question entity to ensure we have the subject
-                Question question = questionRepository.findById(Long.valueOf(response.getQuestion().getQuestionId()))
-                        .orElseThrow(() -> new RuntimeException("Question not found"));
+                Integer qid = response.getQuestion().getQuestionId();
+                Question question = questionRepository.findById(qid)
+                        .orElseThrow(() -> new RuntimeException("Question not found with ID: " + qid));
 
-                // Set the subject from the question
-                if (question.getSubject() != null) {
-                    response.setSubject(question.getSubject());
-                    logger.info("Setting subject to: " + question.getSubject() + " for question ID: " + question.getQuestionId());
-                } else {
-                    logger.warn("Question subject is null for question ID: " + question.getQuestionId());
-                }
+                response.setSubject(question.getSubject());
+                response.setExplanation(question.getExplanation());
+
+                logger.info("Processed response for Question ID: {}, Subject: {}", qid, question.getSubject());
             }
 
-            // Save all responses
-            List<UserResponse> savedResponses = userResponseRepository.saveAll(responses);
-
-            // Log for debugging
-            for (UserResponse saved : savedResponses) {
-                logger.info("Saved response ID: " + saved.getId() + ", Subject: " + saved.getSubject());
-            }
-
-            // Calculate score
+            userResponseRepository.saveAll(responses);
             int score = calculateScore(responses);
-
             return ResponseEntity.ok(score);
+
         } catch (Exception e) {
             logger.error("Error submitting responses", e);
-            return ResponseEntity.status(500).body(null);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Something went wrong.");
         }
     }
+
+
+
 
     @GetMapping("/review/{userId}")
     public ResponseEntity<List<Map<String, Object>>> getReviewData(@PathVariable String userId) {
@@ -78,7 +91,7 @@ public class UserResponseController {
             List<Map<String, Object>> reviewData = userResponses.stream()
                     .map(response -> {
                         // Get the question details
-                        Question question = questionRepository.findById(Long.valueOf(response.getQuestion().getQuestionId()))
+                        Question question = questionRepository.findById(response.getQuestion().getQuestionId())
                                 .orElse(null);
 
                         if (question == null) {
@@ -95,7 +108,8 @@ public class UserResponseController {
                         data.put("optionD", question.getOptionD());
                         data.put("correctOption", String.valueOf(question.getCorrectOption()));
                         data.put("userResponse", response.getUserResponse());
-                        data.put("subject", response.getSubject());  // Include the subject field
+                        data.put("subject", response.getSubject());
+                        data.put("explanation", question.getExplanation());
 
                         return data;
                     })
@@ -116,7 +130,7 @@ public class UserResponseController {
             if (response.getUserResponse() != null) {
                 // Fetch the question to get the correct answer
                 // Convert Integer to Long for repository call
-                Question question = questionRepository.findById(Long.valueOf(response.getQuestion().getQuestionId()))
+                Question question = questionRepository.findById(response.getQuestion().getQuestionId())
                         .orElse(null);
 
                 if (question != null &&
@@ -129,13 +143,15 @@ public class UserResponseController {
         return score;
     }
 
+    @CrossOrigin(origins = "http://localhost:3000", allowCredentials = "true")
     @GetMapping("/has-attended/{userId}/{subject}")
-    public ResponseEntity<Boolean> hasUserAttendedAssessment(@PathVariable String userId, @PathVariable String subject) {
+    public ResponseEntity<Boolean> existsByUserIdAndSubject(@PathVariable String userId, @PathVariable String subject) {
         try {
             int count = userResponseRepository.countResponsesByUserIdAndSubject(userId, subject);
             return ResponseEntity.ok(count > 0);
         } catch (Exception e) {
-            logger.error("Error checking if user has attended assessment", e);
+            // Consider logging the exception details for better debugging
+            e.printStackTrace(); // Add this line to print the stack trace
             return ResponseEntity.status(500).body(false);
         }
     }
