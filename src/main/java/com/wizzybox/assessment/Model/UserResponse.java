@@ -32,8 +32,8 @@ public class UserResponse {
     @Column(name = "subject")
     private String subject;
 
-    @Column(name = "explanation")
-    private String explanation;
+//    @Column(name = "explanation")
+//    private String explanation;
 
     @Column(name = "submission_time")
     @Temporal(TemporalType.TIMESTAMP)

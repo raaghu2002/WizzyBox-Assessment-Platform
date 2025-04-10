@@ -59,7 +59,7 @@ public class UserResponseController {
                         .orElseThrow(() -> new RuntimeException("Question not found with ID: " + qid));
 
                 response.setSubject(question.getSubject());
-                response.setExplanation(question.getExplanation());
+//                response.setExplanation(question.getExplanation());
 
                 logger.info("Processed response for Question ID: {}, Subject: {}", qid, question.getSubject());
             }
